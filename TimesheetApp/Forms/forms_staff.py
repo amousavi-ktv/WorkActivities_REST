@@ -18,7 +18,6 @@ class TaskSelectionFormStaff(forms.Form):
         widget=forms.TextInput(attrs={'class': 'form-control'}),
         label="Remarks"
     )
-
     
     def __init__(self, *args, user_id=None, **kwargs):
         super().__init__(*args, **kwargs)

@@ -46,6 +46,7 @@
     <Compile Include="TimesheetApp\decorators.py" />
     <Compile Include="TimesheetApp\Forms\forms_staff.py" />
     <Compile Include="TimesheetApp\forms_supervisor.py" />
+    <Compile Include="TimesheetApp\google_sheets_service.py" />
     <Compile Include="TimesheetApp\middleware.py" />
     <Compile Include="TimesheetApp\migrations\__init__.py" />
     <Compile Include="TimesheetApp\models.py" />

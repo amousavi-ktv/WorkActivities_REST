@@ -218,7 +218,6 @@ class vewActivitiesTimesheetFullRange_GSheet(models.Model):
     adjusted_hijri_day = models.IntegerField(db_column='AdjustedHijriDay', blank=True, null=True)  # Field name made lowercase.
     adjusted_daily_target = models.DecimalField(db_column='Adjusted Daily Target', max_digits=15, decimal_places=4, blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters.
     adjusted_net_balance_hours_field = models.DecimalField(db_column='Adjusted Net Balance (Hours)', max_digits=25, decimal_places=13, blank=True, null=True)  # Field name made lowercase. Field renamed to remove unsuitable characters. Field renamed because it ended with '_'.
-
     class Meta:
         managed = False
         db_table = 'vewActivitiesTimesheetFullRange_GSheet'

@@ -10,6 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
+
+#SMR is the best!
 import os
 import posixpath
 from dotenv import load_dotenv, find_dotenv 
