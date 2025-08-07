@@ -1,0 +1,34 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+    <h2>Welcome Admin, {{ user.name }}</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Operator</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in tasklogs %}
+            <tr>
+                <td>{{ log.task }}</td>
+                <td>{{ log.date }}</td>
+                <td>{{ log.time }}</td>
+                <td>{{ log.operator }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">No logs available.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

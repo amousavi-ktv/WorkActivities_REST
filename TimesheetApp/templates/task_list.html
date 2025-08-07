@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3>All My Task Logs</h3>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Task ID</th>
+            <th>PID</th>
+            <th>Employee</th>
+            <th>Task</th>
+            <th>Start Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in tasklogs %}
+        <tr>
+            <td>{{ log.fk_task_id }}</td>
+            <td>{{ log.user_pid }}</td>
+            <td>{{ log.user_key }}</td>
+            <td>{{ log.task }}</td>
+            <td>{{ log.start_time|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="2">No logs found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+

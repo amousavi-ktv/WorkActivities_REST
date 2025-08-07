@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header with filters -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2>Employee Work Status Report</h2>
+        </div>
+        <div class="col-md-6">
+            <div class="d-flex justify-content-end">
+                <div class="input-group me-2" style="max-width: 200px;">
+                    <span class="input-group-text">Employee</span>
+                    <select id="employee-filter" class="form-select">
+                        <option value="">All</option>
+                        <!-- Will be populated from API -->
+                    </select>
+                </div>
+                <div class="input-group me-2">
+                    <span class="input-group-text">From</span>
+                    <input type="date" id="date-from" class="form-control">
+                </div>
+                <div class="input-group me-2">
+                    <span class="input-group-text">To</span>
+                    <input type="date" id="date-to" class="form-control">
+                </div>
+                <button id="apply-filters" class="btn btn-primary">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Brought Forward</h6>
+                    <h4 id="brought-forward" class="mb-0">0:00:00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Date Range Balance</h6>
+                    <h4 id="date-range-balance" class="mb-0">0.00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Worked (Hours)</h6>
+                    <h4 id="worked-hours" class="mb-0">0.00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Work Target (H)</h6>
+                    <h4 id="work-target" class="mb-0">0.00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Attendance (H)</h6>
+                    <h4 id="attendance-hours" class="mb-0">0.00</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Final Balance</h6>
+                    <h4 id="final-balance" class="mb-0">0:00:00</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timesheet Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Timesheet</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover" id="timesheet-table">
+                            <thead>
+                                <tr>
+                                    <th>Person</th>
+                                    <th>Date</th>
+                                    <th>Day</th>
+                                    <th>Work Start Time</th>
+                                    <th>Lunch Start Time</th>
+                                    <th>Lunch End Time</th>
+                                    <th>Last Activity Time</th>
+                                    <th>Daily Target</th>
+                                    <th>Daily Status</th>
+                                    <th>Lunch Break</th>
+                                    <th>Extra Break</th>
+                                    <th>Work Duration</th>
+                                    <th>Net Balance</th>
+                                    <th>Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody id="timesheet-data">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Daily Hours</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="daily-hours-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Balance Trend</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="balance-trend-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for API integration and charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set default date range (last 30 days)
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    document.getElementById('date-from').value = formatDate(thirtyDaysAgo);
+    document.getElementById('date-to').value = formatDate(today);
+
+    // Load employees for dropdown
+    fetchEmployees();
+
+    // Load initial data
+    loadTimesheetData();
+
+    // Set up event listeners
+    document.getElementById('apply-filters').addEventListener('click', loadTimesheetData);
+  });
+
+  function formatDate(date) {
+    return date.toISOString().split('T')[0];
+  }
+
+  function fetchEmployees() {
+    fetch('/api/timesheet/')
+      .then(response => response.json())
+      .then(data => {
+        const dropdown = document.getElementById('employee-filter');
+        const employees = [...new Set(data.results.map(item => item.employee_id))].filter(Boolean);
+
+        employees.forEach(empId => {
+          const option = document.createElement('option');
+          option.value = empId;
+          option.textContent = empId;
+          dropdown.appendChild(option);
+        });
+      });
+  }
+
+  function loadTimesheetData() {
+    const employeeId = document.getElementById('employee-filter').value;
+    const dateFrom = document.getElementById('date-from').value;
+    const dateTo = document.getElementById('date-to').value;
+
+    let url = '/api/timesheet/?';
+    if (employeeId) url += `employee_id=${employeeId}&`;
+    if (dateFrom) url += `activity_date__gte=${dateFrom}&`;
+    if (dateTo) url += `activity_date__lte=${dateTo}`;
+
+    fetch(url)
+      .then(response => response.json())
+      .then(data => {
+        displayTimesheetData(data.results);
+        updateSummaryCards(data.results);
+        createCharts(data.results);
+      });
+  }
+
+  function displayTimesheetData(data) {
+    const tbody = document.getElementById('timesheet-data');
+    tbody.innerHTML = '';
+
+    data.forEach(record => {
+      const row = document.createElement('tr');
+
+      // Format the date and get day of week
+      const activityDate = record.activity_date ? new Date(record.activity_date) : null;
+      const dayOfWeek = activityDate ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][activityDate.getDay()] : '';
+
+      // Format times
+      const workStartTime = formatTimeFromDateTime(record.work_start_time);
+      const workEndTime = formatTimeFromDateTime(record.work_end_time);
+      const lunchStartTime = formatTimeFromDateTime(record.lunch_break_start_time);
+      const lunchEndTime = formatTimeFromDateTime(record.lunch_break_end_time);
+
+      row.innerHTML = `
+        <td>${record.employee_id || ''}</td>
+        <td>${record.activity_date || ''}</td>
+        <td>${dayOfWeek}</td>
+        <td>${workStartTime}</td>
+        <td>${lunchStartTime}</td>
+        <td>${lunchEndTime}</td>
+        <td>${workEndTime}</td>
+        <td>${record.daily_target_duration_brief || ''}</td>
+        <td>${record.daily_status || ''}</td>
+        <td>${record.lunch_break_hours || ''}</td>
+        <td>${record.break_outside_lunchtime || ''}</td>
+        <td>${record.worked_hours || ''}</td>
+        <td>${record.net_balance || ''}</td>
+        <td>${record.remarks || ''}</td>
+      `;
+
+      tbody.appendChild(row);
+    });
+  }
+
+  function formatTimeFromDateTime(dateTimeStr) {
+    if (!dateTimeStr) return '';
+    const date = new Date(dateTimeStr);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function updateSummaryCards(data) {
+    // Calculate summary statistics
+    let totalWorkedHours = 0;
+    let totalTargetHours = 0;
+    let totalBalance = 0;
+
+    data.forEach(record => {
+      if (record.worked_hours) totalWorkedHours += parseFloat(record.worked_hours);
+      if (record.work_target_hours) totalTargetHours += parseFloat(record.work_target_hours);
+      if (record.net_balance) totalBalance += parseFloat(record.net_balance);
+    });
+
+    // Update summary cards
+    document.getElementById('worked-hours').textContent = totalWorkedHours.toFixed(2);
+    document.getElementById('work-target').textContent = totalTargetHours.toFixed(2);
+    document.getElementById('date-range-balance').textContent = totalBalance.toFixed(2);
+    document.getElementById('attendance-hours').textContent = totalWorkedHours.toFixed(2);
+
+    // Format final balance as hours:minutes:seconds
+    const finalBalanceHours = Math.floor(Math.abs(totalBalance));
+    const finalBalanceMinutes = Math.floor((Math.abs(totalBalance) - finalBalanceHours) * 60);
+    const finalBalanceSeconds = Math.floor(((Math.abs(totalBalance) - finalBalanceHours) * 60 - finalBalanceMinutes) * 60);
+    const sign = totalBalance < 0 ? '-' : '';
+    document.getElementById('final-balance').textContent =
+      `${sign}${finalBalanceHours}:${finalBalanceMinutes.toString().padStart(2, '0')}:${finalBalanceSeconds.toString().padStart(2, '0')}`;
+  }
+
+  function createCharts(data) {
+    // Prepare data for charts
+    const dates = data.map(record => record.activity_date).filter(Boolean);
+    const workedHours = data.map(record => record.worked_hours ? parseFloat(record.worked_hours) : 0);
+    const targetHours = data.map(record => record.work_target_hours ? parseFloat(record.work_target_hours) : 0);
+
+    // Calculate running balance
+    let runningBalance = 0;
+    const balanceTrend = data.map(record => {
+      if (record.net_balance) {
+        runningBalance += parseFloat(record.net_balance);
+      }
+      return runningBalance;
+    });
+
+    // Daily Hours Chart
+    const dailyHoursCtx = document.getElementById('daily-hours-chart').getContext('2d');
+    if (window.dailyHoursChart) window.dailyHoursChart.destroy();
+    window.dailyHoursChart = new Chart(dailyHoursCtx, {
+      type: 'bar',
+      data: {
+        labels: dates,
+        datasets: [
+          {
+            label: 'Worked Hours',
+            data: workedHours,
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'Target Hours',
+            data: targetHours,
+            backgroundColor: 'rgba(255, 99, 132, 0.5)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Hours'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Date'
+            }
+          }
+        }
+      }
+    });
+
+    // Balance Trend Chart
+    const balanceTrendCtx = document.getElementById('balance-trend-chart').getContext('2d');
+    if (window.balanceTrendChart) window.balanceTrendChart.destroy();
+    window.balanceTrendChart = new Chart(balanceTrendCtx, {
+      type: 'line',
+      data: {
+        labels: dates,
+        datasets: [
+          {
+            label: 'Running Balance',
+            data: balanceTrend,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 2,
+            tension: 0.1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            title: {
+              display: true,
+              text: 'Balance (Hours)'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Date'
+            }
+          }
+        }
+      }
+    });
+  }
+</script>
+{% endblock %}
