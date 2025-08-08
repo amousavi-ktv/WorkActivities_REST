@@ -241,3 +241,12 @@ class vewActivitiesAbsenceRecord_GSheet(models.Model):
     class Meta:
         managed = False
         db_table = 'vewActivitiesAbsenceRecord_GSheet'
+
+class vewTransferViewToGoogleSheet(models.Model):
+    id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
+    view_name = models.TextField(db_column='ViewName')  # Field name made lowercase.
+    google_sheets_id = models.TextField(db_column='GoogleSheets_ID')  # Field name made lowercase.
+    description = models.TextField(db_column='Description', blank=True, null=True)  # Field name made lowercase.
+    class Meta:
+        managed = False
+        db_table = 'vewTransferViewToGoogleSheet'
