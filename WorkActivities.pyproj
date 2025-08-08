@@ -41,6 +41,7 @@
     <Compile Include="manage.py" />
     <Compile Include="TimesheetApp\admin.py" />
     <Compile Include="TimesheetApp\api_urls.py" />
+    <Compile Include="TimesheetApp\api_views.py" />
     <Compile Include="TimesheetApp\apps.py" />
     <Compile Include="TimesheetApp\backends.py" />
     <Compile Include="TimesheetApp\decorators.py" />

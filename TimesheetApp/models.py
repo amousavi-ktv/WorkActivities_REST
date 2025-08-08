@@ -222,3 +222,22 @@ class vewActivitiesTimesheetFullRange_GSheet(models.Model):
         managed = False
         db_table = 'vewActivitiesTimesheetFullRange_GSheet'
 
+class vewActivitiesAbsenceRecord_GSheet(models.Model):
+    view_index = models.BigIntegerField(db_column='ViewIndex', primary_key=True)  # Field name made lowercase.
+    employee_id = models.CharField(db_column='Employee_ID', max_length=5, blank=True, null=True)  # Field name made lowercase.
+    activity_date = models.DateField(db_column='ActivityDate', blank=True, null=True)  # Field name made lowercase.
+    timestamp = models.DateTimeField(db_column='Timestamp', blank=True, null=True)  # Field name made lowercase.
+    absence_code = models.CharField(db_column='AbsenceCode', max_length=4000, blank=True, null=True)  # Field name made lowercase.
+    request_optioncode = models.CharField(db_column='RequestOptionCode', max_length=2, blank=True, null=True)  # Field name made lowercase.
+    approval_status = models.CharField(db_column='ApprovalStatus', max_length=50, blank=True, null=True)  # Field name made lowercase.
+    requestor_id = models.CharField(db_column='Requestor_ID', max_length=5, blank=True, null=True)  # Field name made lowercase.
+    date_from = models.DateTimeField(db_column='Date_From', blank=True, null=True)  # Field name made lowercase.
+    date_to = models.DateTimeField(db_column='Date_To', blank=True, null=True)  # Field name made lowercase.
+    time_diff_miniutes = models.DecimalField(db_column='TimeDiff_Miniutes', max_digits=23, decimal_places=13, blank=True, null=True)  # Field name made lowercase.
+    error_type = models.CharField(db_column='ErrorType', max_length=23, blank=True, null=True)  # Field name made lowercase.
+    is_allowed_daily_duplicates = models.BooleanField(db_column='IsAllowedDailyDuplicates', blank=True, null=True)  # Field name made lowercase.
+    is_excluded_absence_list = models.BooleanField(db_column='IsExcludedAbsenceList', blank=True, null=True)  # Field name made lowercase.
+    is_expandable_absence_range = models.BooleanField(db_column='IsExpandableAbsenceRange', blank=True, null=True)  # Field name made lowercase.
+    class Meta:
+        managed = False
+        db_table = 'vewActivitiesAbsenceRecord_GSheet'
