@@ -56,6 +56,9 @@
     <Compile Include="TimesheetApp\tables_staff.py" />
     <Compile Include="TimesheetApp\tables_supervisor.py" />
     <Compile Include="TimesheetApp\tests.py" />
+    <Compile Include="TimesheetApp\urls.py" />
+    <Compile Include="TimesheetApp\utils\auth.py" />
+    <Compile Include="TimesheetApp\utils\__init__.py" />
     <Compile Include="TimesheetApp\views.py" />
     <Compile Include="TimesheetApp\__init__.py" />
     <Compile Include="WorkActivities\__init__.py" />
@@ -76,6 +79,7 @@
     <Folder Include="TimesheetApp\" />
     <Folder Include="TimesheetApp\migrations\" />
     <Folder Include="TimesheetApp\Forms\" />
+    <Folder Include="TimesheetApp\utils\" />
     <Folder Include="TimesheetApp\templates\" />
     <Folder Include="TimesheetApp\templates\registration\" />
     <Folder Include="TimesheetApp\templates\TimesheetApp\" />
@@ -114,6 +118,7 @@
     <Content Include="app\templates\app\loginpartial.html" />
     <Content Include="TimesheetApp\templates\base.html" />
     <Content Include="TimesheetApp\templates\dashboard_admin.html" />
+    <Content Include="TimesheetApp\templates\dashboard_export.html" />
     <Content Include="TimesheetApp\templates\dashboard_staff.html" />
     <Content Include="TimesheetApp\templates\dashboard_supervisor.html" />
     <Content Include="TimesheetApp\templates\staff_task_selection.html" />

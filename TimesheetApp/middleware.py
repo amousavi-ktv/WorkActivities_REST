@@ -9,8 +9,8 @@ class ForceGoogleAuthMiddleware:
 
         if request.user.is_authenticated:
             try:
-                request.auth_user = tblAuthUser.objects.select_related('fk_userid__fk_roleid').get(email_address=request.user.username)
-                # request.auth_user = tblAuthUser.objects.select_related('fk_userid').get(email_address=request.user.username)
+                request.auth_user = tblAuthUser.objects.select_related('fk_userID__fk_roleID').get(email_address=request.user.username)
+                # request.auth_user = tblAuthUser.objects.select_related('fk_userID').get(email_address=request.user.username)
 
             except tblAuthUser.DoesNotExist:
                 request.auth_user = None

@@ -37,9 +37,9 @@ class TaskSelectionFormSupervisor(forms.Form):
         self.fields['task'].empty_label = "<Select a task>"
         print("Fields in form:", list(self.fields.keys()))
         if user_id:
-            last_task_log = tblTaskLogSupervisor.objects.filter(fk_userid=user_id).order_by('-action_timestamp').first()
+            last_task_log = tblTaskLogSupervisor.objects.filter(fk_userID=user_id).order_by('-action_timestamp').first()
             if last_task_log:
-                self.fields['task'].queryset = tblTask.objects.exclude(id=last_task_log.fk_taskid.id)
+                self.fields['task'].queryset = tblTask.objects.exclude(id=last_task_log.fk_taskID.id)
             else:
                 self.fields['task'].queryset = tblTask.objects.all()
         else:

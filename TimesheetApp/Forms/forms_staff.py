@@ -24,9 +24,9 @@ class TaskSelectionFormStaff(forms.Form):
         self.fields['task'].empty_label = "<Select a task>"
         print("Fields in form:", list(self.fields.keys()))
         if user_id:
-            last_task_log = tblTaskLogStaff.objects.filter(fk_userid=user_id).order_by('-activity_timestamp').first()
+            last_task_log = tblTaskLogStaff.objects.filter(fk_userID=user_id).order_by('-activity_timestamp').first()
             if last_task_log:
-                self.fields['task'].queryset = tblTask.objects.exclude(id=last_task_log.fk_taskid.id)
+                self.fields['task'].queryset = tblTask.objects.exclude(id=last_task_log.fk_taskID.id)
             else:
                 self.fields['task'].queryset = tblTask.objects.all()
         else:
@@ -42,10 +42,10 @@ class TaskSelectionFormStaff(forms.Form):
     #     super().__init__(*args, **kwargs)
         
     #     # now this works because TaskLogStaff is properly imported
-    #     last_task = vewTaskLogStaff.objects.filter(fk_userid=user_id).order_by('-activity_timestamp').first()
+    #     last_task = vewTaskLogStaff.objects.filter(fk_userID=user_id).order_by('-activity_timestamp').first()
         
     #     if last_task:
-    #         self.fields['task'].queryset = tblTask.objects.exclude(id=last_task.fk_taskid)
+    #         self.fields['task'].queryset = tblTask.objects.exclude(id=last_task.fk_taskID)
     #     else:
     #         self.fields['task'].queryset = tblTask.objects.all()
 

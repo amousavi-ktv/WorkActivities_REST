@@ -31,7 +31,7 @@ class tblTask(models.Model):
 class tblRole(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
     role_key = models.CharField(db_column='RoleKey', max_length=20, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
-    role = models.CharField(db_column='RoleName', max_length=40, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
+    role = models.CharField(db_column='Role', max_length=40, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     class Meta:
         managed = False
@@ -43,7 +43,7 @@ class tblAppUser(models.Model):
     user_key = models.CharField(db_column='UserKey', unique=True, max_length=12, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     firstame = models.CharField(db_column='Firstame', max_length=50, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     surname = models.CharField(db_column='Surname', max_length=50, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
-    fk_roleid = models.ForeignKey(tblRole, models.DO_NOTHING, db_column='fk_RoleID', blank=True, null=True)  # Field name made lowercase.
+    fk_roleID = models.ForeignKey(tblRole, models.DO_NOTHING, db_column='fk_RoleID', blank=True, null=True)  # Field name made lowercase.
     is_active = models.BooleanField(db_column='IsActive')  # Field name made lowercase.
     email_address = models.CharField(db_column='EmailAddress', max_length=50, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
@@ -55,7 +55,7 @@ class tblAppUser(models.Model):
 
 class tblAuthUser(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
-    fk_userid = models.ForeignKey(tblAppUser, db_column='fk_UserID', on_delete=models.DO_NOTHING)
+    fk_userID = models.ForeignKey(tblAppUser, db_column='fk_UserID', on_delete=models.DO_NOTHING)
     auth_provider = models.CharField(db_column='AuthProvider', max_length=20, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     email_address = models.CharField(db_column='ProviderUserID', max_length=255, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     password = models.CharField(db_column='Password', max_length=128, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
@@ -68,23 +68,23 @@ class tblAuthUser(models.Model):
         
 class tblTaskLogAdmin(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
-    fk_userid = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_UserID', related_name='tasklogadmin_user', blank=True, null=True)  # Field name made lowercase.
-    fk_taskid = models.ForeignKey(tblTask, models.DO_NOTHING, db_column='fk_TaskID', related_name='tasklogadmin_task', blank=True, null=True)  # Field name made lowercase.
+    fk_userID = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_UserID', related_name='tasklogadmin_user', blank=True, null=True)  # Field name made lowercase.
+    fk_taskID = models.ForeignKey(tblTask, models.DO_NOTHING, db_column='fk_TaskID', related_name='tasklogadmin_task', blank=True, null=True)  # Field name made lowercase.
     date = models.DateField(db_column='Date', blank=True, null=True)  # Field name made lowercase.
     time = models.TimeField(db_column='Time', blank=True, null=True)  # Field name made lowercase.
     action_timestamp = models.DateTimeField(db_column='ActionTimestamp', blank=True, null=True)  # Field name made lowercase.
     work_activities = models.CharField(db_column='WorkActivities', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
-    fk_operatorid = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_OperatorID', related_name='tbltasklogadmin_fk_operatorid_set', blank=True, null=True)  # Field name made lowercase.
+    fk_operatorID = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_OperatorID', related_name='tbltasklogadmin_fk_operatorID_set', blank=True, null=True)  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     class Meta:
         managed = False
         db_table = 'tblTaskLog_Admin'
-        unique_together = (('fk_userid', 'fk_taskid', 'date', 'time'),)
+        unique_together = (('fk_userID', 'fk_taskID', 'date', 'time'),)
 
 class tblTaskLogSupervisor(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
-    fk_userid = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_UserID', related_name='tasklogsupervisor_user')  # Field name made lowercase.
-    fk_taskid = models.ForeignKey(tblTask, models.DO_NOTHING, db_column='fk_TaskID', related_name='tasklogsupervisor_task')  # Field name made lowercase.
+    fk_userID = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_UserID', related_name='tasklogsupervisor_user')  # Field name made lowercase.
+    fk_taskID = models.ForeignKey(tblTask, models.DO_NOTHING, db_column='fk_TaskID', related_name='tasklogsupervisor_task')  # Field name made lowercase.
     date = models.DateField(db_column='Date')  # Field name made lowercase.
     time = models.TimeField(db_column='Time')  # Field name made lowercase.
     action_timestamp = models.DateTimeField(db_column='ActionTimestamp')  # Field name made lowercase.
@@ -93,19 +93,19 @@ class tblTaskLogSupervisor(models.Model):
     class Meta:
         managed = False
         db_table = 'tblTaskLog_Supervisor'
-        unique_together = (('fk_userid', 'fk_taskid', 'date', 'time'),)
+        unique_together = (('fk_userID', 'fk_taskID', 'date', 'time'),)
 
 class tblTaskLogStaff(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
-    fk_userid = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_UserID', related_name='tasklogstaff_user')  # Field name made lowercase.
-    fk_taskid = models.ForeignKey(tblTask, models.DO_NOTHING, db_column='fk_TaskID', related_name='tasklogstaff_task')  # Field name made lowercase.
+    fk_userID = models.ForeignKey(tblAppUser, models.DO_NOTHING, db_column='fk_UserID', related_name='tasklogstaff_user')  # Field name made lowercase.
+    fk_taskID = models.ForeignKey(tblTask, models.DO_NOTHING, db_column='fk_TaskID', related_name='tasklogstaff_task')  # Field name made lowercase.
     activity_timestamp = models.DateTimeField(db_column='ActivityTimestamp')  # Field name made lowercase.
     work_activities = models.CharField(db_column='WorkActivities', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     class Meta:
         managed = False
         db_table = 'tblTaskLog_Staff' 
-        unique_together = (('fk_userid', 'fk_taskid', 'activity_timestamp'),)
+        unique_together = (('fk_userID', 'fk_taskID', 'activity_timestamp'),)
 
 class vewTaskLogAdmin(models.Model):
     id = models.CharField(db_column='ID', primary_key=True, max_length=40)   # done manually
@@ -113,13 +113,13 @@ class vewTaskLogAdmin(models.Model):
     pid = models.CharField(db_column='PID', max_length=4, blank=True, null=True)  # Field name made lowercase.
     task = models.CharField(db_column='Task', max_length=40, blank=True, null=True)  # Field name made lowercase.
     task_key = models.CharField(db_column='TaskKey', max_length=40, blank=True, null=True)  # Field name made lowercase.
-    role = models.CharField(db_column='RoleName', max_length=40, blank=True, null=True)  # Field name made lowercase.
+    role = models.CharField(db_column='Role', max_length=40, blank=True, null=True)  # Field name made lowercase.
     date = models.DateField(db_column='Date', blank=True, null=True)  # Field name made lowercase.
     time = models.TimeField(db_column='Time', blank=True, null=True)  # Field name made lowercase.
     action_timestamp = models.DateTimeField(db_column='ActionTimestamp', blank=True, null=True)  # Field name made lowercase.
     activity_timestamp = models.DateTimeField(db_column='ActivityTimestamp', blank=True, null=True)  # Field name made lowercase.
-    fk_taskid = models.IntegerField(db_column='fk_TaskID', blank=True, null=True)  # Field name made lowercase.
-    fk_userid = models.IntegerField(db_column='fk_UserID', blank=True, null=True)  # Field name made lowercase.
+    fk_taskID = models.IntegerField(db_column='fk_TaskID', blank=True, null=True)  # Field name made lowercase.
+    fk_userID = models.IntegerField(db_column='fk_UserID', blank=True, null=True)  # Field name made lowercase.
     operator = models.CharField(db_column='Operator', max_length=4, blank=True, null=True)  # Field name made lowercase.
     class Meta:
         managed = False
@@ -131,16 +131,16 @@ class vewTaskLogSupervisor(models.Model):
     pid = models.CharField(db_column='PID', max_length=4, blank=True, null=True)  # Field name made lowercase.
     task = models.CharField(db_column='Task', max_length=40, blank=True, null=True)  # Field name made lowercase.
     task_key = models.CharField(db_column='TaskKey', max_length=40, blank=True, null=True)  # Field name made lowercase.
-    role = models.CharField(db_column='RoleName', max_length=40, blank=True, null=True)  # Field name made lowercase.
+    role = models.CharField(db_column='Role', max_length=40, blank=True, null=True)  # Field name made lowercase.
     date = models.DateField(db_column='Date', blank=True, null=True)  # Field name made lowercase.
     time = models.TimeField(db_column='Time', blank=True, null=True)  # Field name made lowercase.
     action_timestamp = models.DateTimeField(db_column='ActionTimestamp', blank=True, null=True)  # Field name made lowercase.
     activity_timestamp = models.DateTimeField(db_column='ActivityTimestamp', blank=True, null=True)  # Field name made lowercase.
-    fk_taskid = models.IntegerField(db_column='fk_TaskID', blank=True, null=True)  # Field name made lowercase.
-    fk_userid = models.IntegerField(db_column='fk_UserID', blank=True, null=True)  # Field name made lowercase.
+    fk_taskID = models.IntegerField(db_column='fk_TaskID', blank=True, null=True)  # Field name made lowercase.
+    fk_userID = models.IntegerField(db_column='fk_UserID', blank=True, null=True)  # Field name made lowercase.
     work_activities = models.CharField(db_column='WorkActivities', max_length=250, blank=True, null=True)  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, blank=True, null=True)  # Field name made lowercase.
-    task_logid = models.IntegerField(db_column='TaskLogID')  # Field name made lowercase.
+    task_log_id = models.IntegerField(db_column='TaskLogID')  # Field name made lowercase.
     class Meta:
         managed = False
         db_table = 'vewTaskLog_Supervisor'
@@ -151,15 +151,15 @@ class vewTaskLogStaff(models.Model):
     pid = models.CharField(db_column='PID', max_length=4, blank=True, null=True)  # Field name made lowercase.
     task = models.CharField(db_column='Task', max_length=40, blank=True, null=True)  # Field name made lowercase.
     task_key = models.CharField(db_column='TaskKey', max_length=40, blank=True, null=True)  # Field name made lowercase.
-    role = models.CharField(db_column='RoleName', max_length=40, blank=True, null=True)  # Field name made lowercase.
+    role = models.CharField(db_column='Role', max_length=40, blank=True, null=True)  # Field name made lowercase.
     date = models.DateField(db_column='Date', blank=True, null=True)  # Field name made lowercase.
     time = models.TimeField(db_column='Time', blank=True, null=True)  # Field name made lowercase.
     action_timestamp = models.DateTimeField(db_column='ActionTimestamp')  # Field name made lowercase.
-    fk_taskid = models.IntegerField(db_column='fk_TaskID')  # Field name made lowercase.
-    fk_userid = models.IntegerField(db_column='fk_UserID')  # Field name made lowercase.
+    fk_taskID = models.IntegerField(db_column='fk_TaskID')  # Field name made lowercase.
+    fk_userID = models.IntegerField(db_column='fk_UserID')  # Field name made lowercase.
     work_activities = models.CharField(db_column='WorkActivities', max_length=250, blank=True, null=True)  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, blank=True, null=True)  # Field name made lowercase.
-    task_logid = models.IntegerField(db_column='TaskLogID')  # Field name made lowercase.
+    task_log_id = models.IntegerField(db_column='TaskLogID')  # Field name made lowercase.
     activity_timestamp = models.DateTimeField(db_column='ActivityTimestamp')  # Field name made lowercase.
     class Meta:
         managed = False
@@ -177,16 +177,15 @@ class tblSettings(models.Model):
 
 class vewUserDetails(models.Model):
     id = models.BigIntegerField(db_column='ID', primary_key=True)  # Field name made lowercase.
-    userid = models.IntegerField(db_column='UserID')  # Field name made lowercase.
     pid = models.CharField(db_column='PID', max_length=4)  # Field name made lowercase.
     user_key = models.CharField(db_column='UserKey', max_length=12)  # Field name made lowercase.
     firstame = models.CharField(db_column='Firstame', max_length=50)  # Field name made lowercase.
     surname = models.CharField(db_column='Surname', max_length=50)  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=50, blank=True, null=True)  # Field name made lowercase.
-    fk_roleid = models.IntegerField(db_column='fk_RoleID', blank=True, null=True)  # Field name made lowercase.
+    fk_roleID = models.IntegerField(db_column='fk_RoleID', blank=True, null=True)  # Field name made lowercase.
     is_active = models.BooleanField(db_column='IsActive', blank=True, null=True)  # Field name made lowercase.
     role_key = models.CharField(db_column='RoleKey', max_length=20, blank=True, null=True)  # Field name made lowercase.
-    role = models.CharField(db_column='RoleName', max_length=40, blank=True, null=True)  # Field name made lowercase.
+    role = models.CharField(db_column='Role', max_length=40, blank=True, null=True)  # Field name made lowercase.
     role_remarks = models.CharField(db_column='RoleRemarks', max_length=250, blank=True, null=True)  # Field name made lowercase.
     email_address = models.CharField(db_column='EmailAddress', max_length=50, blank=True, null=True)  # Field name made lowercase.
     class Meta:

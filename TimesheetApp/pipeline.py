@@ -14,12 +14,12 @@ def link_auth_user(strategy, details, backend, uid, user=None, *args, **kwargs):
 
     # Try to find matching AuthUser by email
     try:
-        auth_user = tblAuthUser.objects.select_related('fk_userid').get(email_address=email)
+        auth_user = tblAuthUser.objects.select_related('fk_userID').get(email_address=email)
     except tblAuthUser.DoesNotExist:
         raise PermissionDenied(f"Email {email} not authorized in AuthUser.")
 
-    if not auth_user.fk_userid_id:
-        raise PermissionDenied(f"AuthUser for {email} is not linked to a valid AppUser (missing fk_userid).")
+    if not auth_user.fk_userID_id:
+        raise PermissionDenied(f"AuthUser for {email} is not linked to a valid AppUser (missing fk_userID).")
 
     # Store for use in middleware/view
     strategy.session_set('auth_user_id', auth_user.id)

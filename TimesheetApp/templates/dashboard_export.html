@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WorkActivities – Export Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">WorkActivities</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4 class="card-title">Export to Google Sheet</h4>
+                <p class="card-text">Select a view to export data from SQL Server to a connected Google Sheet tab.</p>
+
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exportModal">
+                    Export Data
+                </button>
+
+                <!-- Alert Box -->
+                <div id="alertBox" class="alert mt-3 d-none" role="alert"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Select View to Export</h5>
+                </div>
+                <div class="modal-body">
+                    <select id="viewDropdown" class="form-select mb-3">
+                        <option selected disabled>Select a view</option>
+                    </select>
+                    <div id="spinner" class="d-none text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Exporting...</p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success" id="exportBtn">Export</button>
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap + JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+    let viewList = [];
+
+    async function loadDropdown() {
+      const response = await fetch('/api/transfer-views/');
+      const data = await response.json();
+      viewList = data.views;
+
+      const dropdown = document.getElementById('viewDropdown');
+      dropdown.innerHTML = '<option selected disabled>Select a view</option>';
+      data.views.forEach(view => {
+        const option = document.createElement('option');
+        option.value = view.view_name;
+        option.text = view.view_name;
+        dropdown.appendChild(option);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDropdown);
+
+    document.getElementById('exportBtn').addEventListener('click', async () => {
+      const selectedView = document.getElementById('viewDropdown').value;
+      const selected = viewList.find(v => v.view_name === selectedView);
+
+      const alertBox = document.getElementById('alertBox');
+      const spinner = document.getElementById('spinner');
+
+      if (!selected) {
+        alertBox.className = 'alert alert-warning';
+        alertBox.textContent = 'Please select a view before exporting.';
+        alertBox.classList.remove('d-none');
+        return;
+      }
+
+      spinner.classList.remove('d-none');
+      alertBox.classList.add('d-none');
+
+      try {
+        const response = await fetch('/api/export-to-gsheet/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            view_name: selected.view_name,
+            google_sheets_id: selected.google_sheets_id
+          })
+        });
+
+        const result = await response.json();
+        spinner.classList.add('d-none');
+
+        if (result.status === 'success') {
+          alertBox.className = 'alert alert-success';
+          alertBox.textContent = 'Export completed successfully!';
+        } else {
+          alertBox.className = 'alert alert-danger';
+          alertBox.textContent = 'Export failed. Please try again.';
+        }
+
+      } catch (error) {
+        spinner.classList.add('d-none');
+        alertBox.className = 'alert alert-danger';
+        alertBox.textContent = 'Error: ' + error.message;
+      }
+
+      alertBox.classList.remove('d-none');
+    });
+    </script>
+</body>
+</html>
