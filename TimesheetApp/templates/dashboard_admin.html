@@ -1,136 +1,149 @@
+{% load static %}
+{% load tz %}
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard - WorkActivities</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Dashboard (Supervisor + PID)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+    <div class="container mt-5">
 
-    {% if request.session.role_key != 'STAFF' %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">WorkActivities</span>
-            <span class="navbar-text text-white">Logged in as {{ request.session.user_key }} ({{ request.session.role_key }})</span>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Admin Timesheet</h2>
+            <a class="btn btn-outline-secondary btn-sm" href="{% url 'timesheet:dashboard_supervisor' %}">Open Supervisor Screen</a>
         </div>
-    </nav>
 
-    <div class="container">
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <h4 class="card-title">Export to Google Sheet</h4>
-                <p class="card-text">Select a view below to export its data to the linked Google Sheet tab.</p>
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} mb-3" role="alert">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
 
-                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exportModal">
-                    Export Data
-                </button>
+        <!-- FORM: mirrors supervisor form, adds PID first -->
+        <form method="post" class="row g-3 mb-4" novalidate>
+            {% csrf_token %}
 
-                <!-- Alerts -->
-                <div id="alertBox" class="alert mt-3 d-none" role="alert"></div>
+            <!-- PID first -->
+            <div class="col-md-3" style="max-width: 220px;">
+                {{ form.user_key.label_tag }} {{ form.user_key }}
             </div>
-        </div>
-    </div>
 
-    <!-- Modal -->
-    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Select View to Export</h5>
-                </div>
-                <div class="modal-body">
-                    <select id="viewDropdown" class="form-select mb-3">
-                        <option selected disabled>Select a view</option>
-                    </select>
-                    <div id="spinner" class="d-none text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2">Exporting...</p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-success" id="exportBtn">Export</button>
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                </div>
+            <!-- Same order/widths as supervisor -->
+            <div class="col-md-3" style="max-width: 200px;">
+                {{ form.task.label_tag }} {{ form.task }}
             </div>
-        </div>
-    </div>
-    {% else %}
-    <div class="container text-center mt-5">
-        <h4 class="text-danger">You are not authorised to view this page.</h4>
-    </div>
-    {% endif %}
+            <div class="col-md-2" style="max-width: 180px;">
+                {{ form.date.label_tag }} {{ form.date }}
+            </div>
+            <div class="col-md-2" style="max-width: 160px;">
+                {{ form.time.label_tag }} {{ form.time }}
+            </div>
+            <div class="col-md-3">
+                {{ form.work_activities.label_tag }} {{ form.work_activities }}
+            </div>
+            <div class="col-md-3">
+                {{ form.remarks.label_tag }} {{ form.remarks }}
+            </div>
+            <div class="col-md-1 d-grid align-self-end">
+                <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+        </form>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        <h5 class="mb-3">Recent Admin Task Logs</h5>
+        <div class="table-responsive">
+            <table class="table table-sm table-striped mb-0 align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>UserKey</th>
+                        <th>PID</th>
+                        <th>Task</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Action</th>
+                        <th>Operator</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in logs %}
+                    <tr>
+                        <td>{{ row.id }}</td>
+                        <td>{{ row.user_key }}</td>
+                        <td>{{ row.pid }}</td>
+                        <td>{{ row.task }}</td>
+                        <td>{{ row.date }}</td>
+                        <td>{{ row.time }}</td>
+                        <td>{{ row.action_timestamp }}</td>
+                        <td>{{ row.operator }}</td>
+                        <td>{{ row.remarks }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="9" class="text-center text-muted py-4">No entries yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
 
     <script>
-        let viewList = [];
+        // Match the supervisor UX: disable submit until required fields valid + not future.
+        const form = document.querySelector('form');
+        if (form) {
+            const button = form.querySelector('button[type="submit"]');
+            const dateInput = document.querySelector('#id_date');
+            const timeInput = document.querySelector('#id_time');
 
-        async function loadDropdown() {
-            const response = await fetch('/api/transfer-views/');
-            const data = await response.json();
-            viewList = data.views;
+            if (button) button.disabled = true;
 
-            const dropdown = document.getElementById('viewDropdown');
-            dropdown.innerHTML = '<option selected disabled>Select a view</option>';
-            data.views.forEach(view => {
-                const option = document.createElement('option');
-                option.value = view.view_name;
-                option.text = view.view_name;
-                dropdown.appendChild(option);
-            });
-        }
+            // Set max date to today
+            const now = new Date();
+            const today = now.toISOString().split('T')[0];
+            if (dateInput) dateInput.max = today;
 
-        document.addEventListener('DOMContentLoaded', loadDropdown);
+            if (timeInput) timeInput.disabled = true;
 
-        document.getElementById('exportBtn').addEventListener('click', async () => {
-            const selectedView = document.getElementById('viewDropdown').value;
-            const selected = viewList.find(v => v.view_name === selectedView);
+            function validateFormFields() {
+                const requiredInputs = [...form.elements].filter(el => el.type !== "submit");
+                const allValid = requiredInputs.every(input => input.checkValidity());
 
-            const alertBox = document.getElementById('alertBox');
-            const spinner = document.getElementById('spinner');
-
-            if (!selected) {
-                alertBox.className = 'alert alert-warning';
-                alertBox.textContent = 'Please select a view before exporting.';
-                alertBox.classList.remove('d-none');
-                return;
-            }
-
-            spinner.classList.remove('d-none');
-            alertBox.classList.add('d-none');
-
-            try {
-                const response = await fetch('/api/export-to-gsheet/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        view_name: selected.view_name,
-                        google_sheets_id: selected.google_sheets_id
-                    })
-                });
-
-                const result = await response.json();
-                spinner.classList.add('d-none');
-
-                if (result.status === 'success') {
-                    alertBox.className = 'alert alert-success';
-                    alertBox.textContent = 'Export completed successfully!';
-                } else {
-                    alertBox.className = 'alert alert-danger';
-                    alertBox.textContent = 'Export failed. Please try again.';
+                if (!dateInput || !timeInput) {
+                    if (button) button.disabled = !allValid;
+                    return;
                 }
 
-            } catch (error) {
-                spinner.classList.add('d-none');
-                alertBox.className = 'alert alert-danger';
-                alertBox.textContent = 'Error: ' + error.message;
+                const selectedDate = new Date(dateInput.value || today);
+                const [hours, minutes] = (timeInput.value || "00:00").split(":");
+                selectedDate.setHours(parseInt(hours || "0"));
+                selectedDate.setMinutes(parseInt(minutes || "0"));
+
+                const timeValid = selectedDate <= new Date();
+
+                if (dateInput.value && timeInput.value && !timeValid) {
+                    timeInput.setCustomValidity("Cannot select a time in the future.");
+                } else {
+                    timeInput.setCustomValidity("");
+                }
+
+                if (button) button.disabled = !(allValid && timeValid);
             }
 
-            alertBox.classList.remove('d-none');
-        });
+            if (dateInput) {
+                dateInput.addEventListener('change', () => {
+                    if (timeInput) {
+                        timeInput.disabled = !dateInput.value;
+                        timeInput.value = "";
+                    }
+                    validateFormFields();
+                });
+            }
+
+            if (timeInput) timeInput.addEventListener('input', validateFormFields);
+            form.addEventListener('input', validateFormFields);
+            validateFormFields();
+        }
     </script>
 </body>
 </html>

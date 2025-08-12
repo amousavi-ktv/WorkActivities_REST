@@ -45,8 +45,10 @@
     <Compile Include="TimesheetApp\apps.py" />
     <Compile Include="TimesheetApp\backends.py" />
     <Compile Include="TimesheetApp\decorators.py" />
-    <Compile Include="TimesheetApp\Forms\forms_staff.py" />
-    <Compile Include="TimesheetApp\forms_supervisor.py" />
+    <Compile Include="TimesheetApp\forms\forms_admin.py" />
+    <Compile Include="TimesheetApp\forms\forms_staff.py" />
+    <Compile Include="TimesheetApp\forms\__init__.py" />
+    <Compile Include="TimesheetApp\forms\forms_supervisor.py" />
     <Compile Include="TimesheetApp\google_sheets_service.py" />
     <Compile Include="TimesheetApp\middleware.py" />
     <Compile Include="TimesheetApp\migrations\__init__.py" />
@@ -78,7 +80,7 @@
     <Folder Include="app\templates\app\" />
     <Folder Include="TimesheetApp\" />
     <Folder Include="TimesheetApp\migrations\" />
-    <Folder Include="TimesheetApp\Forms\" />
+    <Folder Include="TimesheetApp\forms\" />
     <Folder Include="TimesheetApp\utils\" />
     <Folder Include="TimesheetApp\templates\" />
     <Folder Include="TimesheetApp\templates\registration\" />
@@ -121,9 +123,9 @@
     <Content Include="TimesheetApp\templates\dashboard_export.html" />
     <Content Include="TimesheetApp\templates\dashboard_staff.html" />
     <Content Include="TimesheetApp\templates\dashboard_supervisor.html" />
+    <Content Include="TimesheetApp\templates\registration\admin_transfer_views.html" />
     <Content Include="TimesheetApp\templates\staff_task_selection.html" />
     <Content Include="TimesheetApp\templates\task_list.html" />
-    <Content Include="TimesheetApp\templates\task_selection_staff.html" />
     <Content Include="TimesheetApp\templates\TimesheetApp\timesheet_report.html" />
     <Content Include="WorkActivities\.gitattributes" />
     <Content Include="WorkActivities\.gitignore" />

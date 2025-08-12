@@ -22,17 +22,19 @@ class tblTask(models.Model):
     task_key = models.CharField(db_column='TaskKey', unique=True, max_length=40, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     task = models.CharField(db_column='Task', unique=True, max_length=40, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    def __str__(self):
+        return self.task
     class Meta:
         managed = False  # Don't let Django manage this table (no CREATE/DROP)
         db_table = 'tblTask'  # Match your exact SQL Server table name
-    def __str__(self):
-        return self.task
 
 class tblRole(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
     role_key = models.CharField(db_column='RoleKey', max_length=20, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     role = models.CharField(db_column='Role', max_length=40, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    def __str__(self): 
+        return self.role
     class Meta:
         managed = False
         db_table = 'tblRole'
@@ -47,11 +49,12 @@ class tblAppUser(models.Model):
     is_active = models.BooleanField(db_column='IsActive')  # Field name made lowercase.
     email_address = models.CharField(db_column='EmailAddress', max_length=50, db_collation='Latin1_General_CI_AS')  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=50, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    def __str__(self):
+        # return self.pid  # or return f"{self.firstname} {self.surname}" if preferred  ChatGPT suggests to renove 11/08/2025
+        return f"{self.pid} - {self.user_key}"      # ChatGPT suggests to add 11/08/2025
     class Meta:
         managed = False
         db_table = 'tblUser'
-    def __str__(self):
-        return self.pid  # or return f"{self.firstname} {self.surname}" if preferred
 
 class tblAuthUser(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
@@ -90,10 +93,12 @@ class tblTaskLogSupervisor(models.Model):
     action_timestamp = models.DateTimeField(db_column='ActionTimestamp')  # Field name made lowercase.
     work_activities = models.CharField(db_column='WorkActivities', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    def __str__(self): 
+        return f"{self.fk_userID} | {self.fk_taskID} | {self.date} {self.time}"     # chatGPT suggests to add 11/08/2025
     class Meta:
         managed = False
         db_table = 'tblTaskLog_Supervisor'
-        unique_together = (('fk_userID', 'fk_taskID', 'date', 'time'),)
+        unique_together = (('fk_userID', 'fk_taskID', 'date', 'time'),)  
 
 class tblTaskLogStaff(models.Model):
     id = models.AutoField(db_column='ID', primary_key=True)  # Field name made lowercase.
@@ -102,6 +107,8 @@ class tblTaskLogStaff(models.Model):
     activity_timestamp = models.DateTimeField(db_column='ActivityTimestamp')  # Field name made lowercase.
     work_activities = models.CharField(db_column='WorkActivities', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
     remarks = models.CharField(db_column='Remarks', max_length=250, db_collation='Latin1_General_CI_AS', blank=True, null=True)  # Field name made lowercase.
+    def __str__(self): 
+        return f"{self.fk_userID} | {self.fk_taskID} | {self.activity_timestamp}"
     class Meta:
         managed = False
         db_table = 'tblTaskLog_Staff' 
@@ -249,3 +256,11 @@ class vewTransferViewToGoogleSheet(models.Model):
     class Meta:
         managed = False
         db_table = 'vewTransferViewToGoogleSheet'
+
+class vewUserKey(models.Model):
+    user_key = models.CharField(db_column='UserKey', max_length=12,  primary_key=True) 
+    def __str__(self):
+        return self.user_key    
+    class Meta:
+        managed = False
+        db_table = 'vewUserKey'
