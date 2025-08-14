@@ -2,53 +2,30 @@
 # TimesheetApp/Forms/forms_staff.py
 #
 from django import forms
-from TimesheetApp.models import tblTask, tblTaskLogStaff
+from TimesheetApp.models import tblTask
 
 class TaskSelectionFormStaff(forms.Form):
     task = forms.ModelChoiceField(
-        queryset=tblTask.objects.all().order_by('task'),
-        required=True,
         label="Task",
-        widget=forms.Select(attrs={'class': 'form-select'})
+        queryset=tblTask.objects.none(),              # AJAX: start empty
+        required=True,
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_task"})
     )
     work_activities = forms.CharField(
+        label="Work Activities",
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'}),
-        label="Work Activities"
+        widget=forms.Textarea(attrs={"rows": 2, "class": "form-control"})
     )
     remarks = forms.CharField(
+        label="Remarks",
         required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control'}),
-        label="Remarks"
+        widget=forms.Textarea(attrs={"rows": 2, "class": "form-control"})
     )
-    
+
     def __init__(self, *args, user_id=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['task'].empty_label = "<Select a task>"
-        print("Fields in form:", list(self.fields.keys()))
-        if user_id:
-            last_task_log = tblTaskLogStaff.objects.filter(fk_userID=user_id).order_by('-activity_timestamp').first()
-            if last_task_log:
-                self.fields['task'].queryset = tblTask.objects.exclude(id=last_task_log.fk_taskID.id)
-            else:
-                self.fields['task'].queryset = tblTask.objects.all()
+        task_id = self.data.get("task")
+        if task_id:
+            self.fields["task"].queryset = tblTask.objects.filter(pk=task_id)
         else:
-            self.fields['task'].queryset = tblTask.objects.all()
-
-# from django import forms
-# from TimesheetApp.models import tblTask, vewTaskLogStaff
-
-# class TaskSelectionFormStaff(forms.Form):
-#     task = forms.ModelChoiceField(queryset=tblTask.objects.none())
-
-    # def __init__(self, *args, user_id=None, **kwargs):
-    #     super().__init__(*args, **kwargs)
-        
-    #     # now this works because TaskLogStaff is properly imported
-    #     last_task = vewTaskLogStaff.objects.filter(fk_userID=user_id).order_by('-activity_timestamp').first()
-        
-    #     if last_task:
-    #         self.fields['task'].queryset = tblTask.objects.exclude(id=last_task.fk_taskID)
-    #     else:
-    #         self.fields['task'].queryset = tblTask.objects.all()
-
+            self.fields["task"].queryset = tblTask.objects.none()

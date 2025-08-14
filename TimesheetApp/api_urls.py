@@ -1,15 +1,15 @@
-
+# TimesheetApp/api_urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
+
+from .api_views import (
     vewTaskLogAdminViewSet,
-    vewTaskLogSupervisorViewSet, 
+    vewTaskLogSupervisorViewSet,
     vewTaskLogStaffViewSet,
     vewUserDetailsViewSet,
-    vewTimesheetViewSet
+    vewTimesheetViewSet,
 )
 
-# Create router and register viewsets
 router = DefaultRouter()
 router.register(r'tasklog-admin', vewTaskLogAdminViewSet)
 router.register(r'tasklog-supervisor', vewTaskLogSupervisorViewSet)

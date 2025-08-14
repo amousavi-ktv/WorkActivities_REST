@@ -1,485 +1,421 @@
-﻿
-# views.py
+﻿# TimesheetApp/views.py
 from datetime import timedelta
-from django.conf import settings
-from django.contrib import admin
+import json
+import gspread
+import pandas as pd
+
+from django.utils import timezone
+from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from django.shortcuts import redirect
-from django.shortcuts import redirect, render
-from django.urls import path, include
-from django.utils import timezone
-from requests import get
-from social_django.models import UserSocialAuth
-from TimesheetApp.decorators import require_auth_user
-from urllib.parse import urlencode
-from django.utils import timezone
-from TimesheetApp.models import  tblAuthUser, tblTaskLogStaff, tblTaskLogSupervisor, vewTaskLogStaff, vewTaskLogSupervisor
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django_tables2 import RequestConfig
-from TimesheetApp.models import vewUserDetails
-# # from TimesheetApp.forms_supervisor import TaskSelectionFormSupervisor
-from TimesheetApp.tables_supervisor import TaskLogSupervisorTable
-import datetime
-from django.utils.timezone import localtime
-# from TimesheetApp.Forms.forms_staff import TaskSelectionFormStaff
-from TimesheetApp.models import tblAppUser, tblTask  # Ensure these are imported
-from TimesheetApp.tables_staff import TaskLogStaffTable
-from django.db import IntegrityError
-from TimesheetApp.models import tblTaskLogStaff
-from django.utils import timezone
-from TimesheetApp.models import tblTaskLogSupervisor
-from django.utils import timezone
-
-# for REST:
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from .serializers import (
-    vewTaskLogAdmin, vewTaskLogAdminSerializer, vewTaskLogSupervisorSerializer, 
-    vewTaskLogStaffSerializer, vewUserDetailsSerializer, vewActivitiesTimesheetFullRange_GSheet, vewTimesheetSerializer
-)
-from django.http import JsonResponse
-from .models import vewTransferViewToGoogleSheet
-
-import pandas as pd
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
 from django.db import connection
+from django.db.models import Q
+from django.db import IntegrityError
+from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import redirect, render
+from django_tables2 import RequestConfig
+from oauth2client.service_account import ServiceAccountCredentials
 
-
-from functools import wraps
-from django.shortcuts import redirect
-
-from django.contrib import messages
-from django.views.decorators.http import require_POST
-# from TimesheetApp.Forms.forms_admin import AdminTimesheetForm
-from TimesheetApp.models import tblTaskLogAdmin, vewTransferViewToGoogleSheet
-
-# concise, thanks to __init__.py re-exports
 from TimesheetApp.forms import (
     TaskSelectionFormStaff,
     TaskSelectionFormSupervisor,
     AdminTimesheetForm,
 )
+from TimesheetApp.models import (
+    tblAuthUser,
+    tblAppUser,
+    tblTask,
+    tblTaskLogStaff,
+    tblTaskLogSupervisor,
+    tblTaskLogAdmin,
+    vewTaskLogStaff,
+    vewTaskLogSupervisor,
+    vewTaskLogAdmin,
+    vewUserDetails,
+    vewTransferViewToGoogleSheet,
+    vewUserKey,   # <-- use the plain user_key view for Admin picker
+)
+from TimesheetApp.tables_staff import TaskLogStaffTable
+from TimesheetApp.tables_supervisor import TaskLogSupervisorTable
 
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.utils import timezone
-from TimesheetApp.forms import AdminTimesheetForm
-from TimesheetApp.models import tblTaskLogAdmin, vewTaskLogAdmin
 
+# --------------------------
+# Helpers
+# --------------------------
+def get_role_key(request):
+    """Return role key from session (preferred) or from attached auth_user."""
+    rk = request.session.get("role_key")
+    if rk:
+        return rk.upper()
+    auth_user = getattr(request, "auth_user", None)
+    if auth_user and getattr(auth_user.fk_userID.fk_roleID, "role_key", None):
+        return auth_user.fk_userID.fk_roleID.role_key.upper()
+    return "UNKNOWN"
+
+
+# --------------------------
+# Entry / Auth
+# --------------------------
+@login_required
+def welcome(request):
+    """Land here, then route to the appropriate dashboard."""
+    if not hasattr(request, "auth_user") or request.auth_user is None:
+        return redirect("/auth/login/google-oauth2/?prompt=select_account&hd=karbalatv.com")
+    return redirect("timesheet:dashboard")
+
+
+def logout_view(request):
+    logout(request)
+    return redirect("timesheet:welcome")
+
+
+# --------------------------
+# Role Router
+# --------------------------
 @login_required
 def dashboard(request):
-    auth_user = getattr(request, 'auth_user', None)
+    """
+        Lightweight router:
+        - STAFF      -> dashboard_staff
+        - SUPERVISOR -> dashboard_supervisor
+        - ADMIN      -> dashboard_admin
+    """
+    auth_user = getattr(request, "auth_user", None)
     if not auth_user:
         return HttpResponseForbidden("Unauthorized")
 
-    if not request.user.is_authenticated:
-        return redirect('/auth/login/google-oauth2/?prompt=select_account&hd=karbalatv.com')
-
+    # cache user details in session for headers
     auth_user_id = auth_user.fk_userID.id
-
-    # Load user details
-    try:       
-        # Get the user details (based on PID or ID, depending on your view design)
-        user_details = vewUserDetails.objects.filter(id=auth_user_id).first()
-
-    except tblAuthUser.DoesNotExist:
-        logout(request)
-        return HttpResponseForbidden("Unauthorized Access - Please contact admin.")
-
-    role_key = getattr(auth_user.fk_userID.fk_roleID, 'role_key', '').upper()
-
-    request.session['user_key'] = getattr(user_details, 'user_key', 'User')
-    request.session['role_key'] = role_key  # e.g. 'SUPERVISOR', 'ADMIN', 'STAFF'
-
-    if not role_key:
-        return HttpResponseForbidden("No role assigned")
+    user_details = vewUserDetails.objects.filter(id=auth_user_id).first()
+    role_key = getattr(auth_user.fk_userID.fk_roleID, "role_key", "").upper()
+    request.session["user_key"] = getattr(user_details, "user_key", "User")
+    request.session["role_key"] = role_key
 
     if role_key == "STAFF":
-        if request.method == 'POST':
-            form = TaskSelectionFormStaff(request.POST, user_id=auth_user_id)
-            if form.is_valid():
-                selected_task = form.cleaned_data['task']
-                work_activities = form.cleaned_data.get('work_activities', '')
-                remarks = form.cleaned_data.get('remarks', '')
-
-                if not selected_task:
-                    form.add_error(None, "Task is required.")
-                else:
-                    tblTaskLogStaff.objects.create(
-                        fk_userID=auth_user.fk_userID,   # pass object, not id
-                        fk_taskID=selected_task,         # pass object, not id
-                        activity_timestamp=timezone.now(),
-                        work_activities=work_activities,
-                        remarks=remarks
-                    )
-                    return redirect('timesheet:dashboard')
-
-            # except Exception as e:
-            #     form.add_error(None, f"Error: {str(e)}")
-
-            # Load table data
-            logs = vewTaskLogStaff.objects.filter(fk_userID=auth_user_id).order_by('-activity_timestamp')
-            table = TaskLogStaffTable(logs)
-            RequestConfig(request).configure(table)
-
-            return render(request, 'dashboard_staff.html', {
-                'form': form,
-                'table': table,
-                'user_key': user_details.user_key if user_details else 'Staff'
-            })
-        else:
-            form = TaskSelectionFormStaff()
-
-        logs = vewTaskLogStaff.objects.filter(fk_userID=auth_user_id).order_by('-activity_timestamp')
-        table = TaskLogStaffTable(logs)
-        RequestConfig(request).configure(table)
-
-        form = TaskSelectionFormStaff(user_id=auth_user_id)
-        return render(request, 'dashboard_staff.html', {
-            'form': form,
-            'table': TaskLogStaffTable(logs),
-            'user_key': user_details.user_key if user_details else 'User'
-        })
-
-    # if role_key == "SUPERVISOR":
-    if role_key in ("SUPERVISOR", "ADMIN"):
-        if request.method == 'POST':
-            form = TaskSelectionFormSupervisor(request.POST, user_id=auth_user_id)
-            if form.is_valid():
-                selected_task  = form.cleaned_data.get('task')
-                selected_date  = form.cleaned_data.get('date')
-                selected_time  = form.cleaned_data.get('time')
-                work_activities = form.cleaned_data.get('work_activities', '')
-                remarks         = form.cleaned_data.get('remarks', '')
-
-                if not selected_task or not selected_date or not selected_time:
-                    form.add_error(None, "Task, Date, and Time are required.")
-                else:
-                    tblTaskLogSupervisor.objects.create(
-                        fk_userID=auth_user.fk_userID,   # object
-                        fk_taskID=selected_task,         # object
-                        date=selected_date,
-                        time=selected_time,
-                        action_timestamp=timezone.now(),
-                        work_activities=work_activities,
-                        remarks=remarks
-                    )
-                    return redirect('timesheet:dashboard')
-
-                # except Exception as e:
-                #     form.add_error(None, f"Error: {str(e)}")
-
-            # Load table data
-            logs = vewTaskLogSupervisor.objects.filter(fk_userID=auth_user_id).order_by('-date')
-            table = TaskLogSupervisorTable(logs)
-            RequestConfig(request).configure(table)
-
-            return render(request, 'dashboard_supervisor.html', {
-                'form': form,
-                'table': table,
-                'user_key': user_details.user_key if user_details else 'Supervisor',
-                'is_admin': (role_key == "ADMIN"),   # <-- add this
-            })
-        else:
-            form = TaskSelectionFormSupervisor()
-
-        logs = vewTaskLogSupervisor.objects.filter(fk_userID=auth_user_id).order_by('-date')
-        table = TaskLogSupervisorTable(logs)
-        RequestConfig(request).configure(table)
-
-        return render(request, 'dashboard_supervisor.html', {
-            'form': form,
-            'table': table,
-            'user_key': user_details.user_key if user_details else 'Supervisor',
-            'is_admin': (role_key == "ADMIN"),   # <-- add this
-        })
-
-    if role_key in ("ADMIN"):
-        # either render here, or (cleaner) redirect to the dedicated admin dashboard
+        return redirect("timesheet:dashboard_staff")
+    if role_key == "SUPERVISOR":
+        return redirect("timesheet:dashboard_supervisor")
+    if role_key == "ADMIN":
         return redirect("timesheet:dashboard_admin")
 
     return HttpResponseForbidden("Unknown role")
 
+
+# --------------------------
+# Staff Dashboard
+# --------------------------
 @login_required
-def dashboard_supervisor(request):
-    auth_user = getattr(request, 'auth_user', None)
-    role_key = get_role_key(request)
-    # if not auth_user or auth_user.fk_userID.fk_roleID.role_key != 'SUPERVISOR':
-    # if not auth_user or role_key != 'SUPERVISOR':
-    if not auth_user or role_key not in ('SUPERVISOR', 'ADMIN'):
-        return redirect('timesheet:dashboard')
-    auth_user_id = auth_user.fk_userID.id
-    if request.method == 'POST':
-        form = TaskSelectionFormSupervisor(request.POST)
-        if form.is_valid():
-            vewTaskLogSupervisor.objects.create(
-                fk_userID=auth_user_id,
-                fk_taskID=form.cleaned_data['task'].id,
-                date=form.cleaned_data['date'],
-                time=form.cleaned_data['time'],
-                actiontimestamp=timezone.now()
-            )
-            return redirect('timesheet:dashboard')
-    else:
-        form = TaskSelectionFormSupervisor()
-
-    logs = vewTaskLogSupervisor.objects.filter(fk_userID=auth_user_id).order_by('-date')
-    table = TaskLogSupervisorTable(logs)
-
-    return render(request, "dashboard_supervisor.html", {"form": form, "table": table, "user": auth_user.fk_userID})
-
-def get_role_key(request):
-    # Prefer session (set in dashboard), fall back to auth_user if present
-    rk = request.session.get('role_key')
-    if rk:
-        return rk.upper()
-    auth_user = getattr(request, 'auth_user', None)
-    if auth_user and getattr(auth_user.fk_userID.fk_roleID, 'role_key', None):
-        return auth_user.fk_userID.fk_roleID.role_key.upper()
-    return 'UNKNOWN'
-
-def task_list(request):
-    user = getattr(request, 'auth_user', None)
-    if not user:
-        redirect('timesheet:welcome')
-
-    tasklogs = vewTaskLogStaff.objects.filter(fk_userID=user.fk_userID.id).order_by('-activity_timestamp')
-    return render(request, 'task_list.html', {'tasklogs': tasklogs})
-
-def admin_view(request):
-    user = request.auth_user
-    # Your logic here
-
-def welcome(request):
-    if not hasattr(request, 'auth_user') or request.auth_user is None:
-        return redirect('/auth/login/google-oauth2/?prompt=select_account&hd=karbalatv.com')
-    return redirect('timesheet:dashboard')
-
-def logout_view(request):
-    logout(request)
-    redirect('timesheet:welcome')  # or Google logout
-
-def full_logout(request):
-    logout(request)
-    request.session.flush()
-    return redirect('/auth/login/google-oauth2/?prompt=select_account&hd=karbalatv.com')
-
-class ForceGoogleAuthMiddleware:
-    def __init__(self, get_response):
-        self.get_response = get_response
-
-    def __call__(self, request):
-        user = request.user
-
-        if user.is_authenticated:
-            try:
-                social = UserSocialAuth.objects.get(user=user, provider='google-oauth2')
-                access_token = social.extra_data.get('access_token')
-                if not access_token:
-                    redirect('timesheet:welcome')
-
-                # Check token validity directly with Google
-                response = get('https://www.googleapis.com/oauth2/v1/tokeninfo', params={'access_token': access_token})
-                if response.status_code != 200:
-                    # Token is no longer valid (maybe user logged out of Google)
-                    redirect('timesheet:welcome')
-            except UserSocialAuth.DoesNotExist:
-                redirect('timesheet:welcome')
-
-        return self.get_response(request)
-
-# @login_required
-# # @require_roles('STAFF')
 def dashboard_staff(request):
-    auth_user = getattr(request, 'auth_user', None)
+    # Only STAFF should access this page directly
     role_key = get_role_key(request)
-    # if not auth_user or not auth_user.fk_userID.fk_roleID.role.upper() == 'STAFF':
-    if not auth_user or role_key != 'STAFF':
+    if role_key != 'STAFF':
         return redirect('timesheet:dashboard')
+
+    auth_user = getattr(request, 'auth_user', None)
+    if not auth_user:
+        return HttpResponseForbidden("Unauthorized")
+
     auth_user_id = auth_user.fk_userID.id
+    user_details = vewUserDetails.objects.filter(id=auth_user_id).first()
+
+    # Helper: compute the last picked task id for this user (to exclude)
+    last_log = (
+        tblTaskLogStaff.objects
+        .filter(fk_userID=auth_user.fk_userID)
+        .order_by('-activity_timestamp')
+        .only('fk_taskID_id')
+        .first()
+    )
+    last_task_id = last_log.fk_taskID_id if last_log else None
+
     if request.method == 'POST':
-        # form = TaskSelectionFormStaff(request.POST)
         form = TaskSelectionFormStaff(request.POST, user_id=auth_user_id)
+
+        # ---- Fallback queryset (if Select2/JS is off): exclude last task ----
+        if "task" in form.fields and not form.fields["task"].queryset.exists():
+            base = tblTask.objects.all()
+            if last_task_id:
+                base = base.exclude(id=last_task_id)
+            form.fields["task"].queryset = base.order_by("task")
+        # --------------------------------------------------------------------
+
         if form.is_valid():
-            selected_task = form.cleaned_data['task']
-            vewTaskLogStaff.objects.create(
-                fk_userID=auth_user_id,  # use fk_userID
-                fk_taskID=selected_task.id,
-                activity_timestamp=timezone.now()
+            tblTaskLogStaff.objects.create(
+                fk_userID=auth_user.fk_userID,               # pass FK object
+                fk_taskID=form.cleaned_data['task'],         # pass FK object
+                activity_timestamp=timezone.now(),
+                work_activities=form.cleaned_data.get('work_activities', ''),
+                remarks=form.cleaned_data.get('remarks', ''),
             )
-            return redirect('timesheet:dashboard')
+            return redirect('timesheet:dashboard_staff')
     else:
-        # form = TaskSelectionFormStaff()
         form = TaskSelectionFormStaff(user_id=auth_user_id)
 
-    return render(request, 'staff_task_selection.html', {'form': form})
+        # ---- Fallback queryset (if Select2/JS is off): exclude last task ----
+        if "task" in form.fields and not form.fields["task"].queryset.exists():
+            base = tblTask.objects.all()
+            if last_task_id:
+                base = base.exclude(id=last_task_id)
+            form.fields["task"].queryset = base.order_by("task")
+        # --------------------------------------------------------------------
 
-class vewTaskLogAdminViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = vewTaskLogAdmin.objects.all()
-    serializer_class = vewTaskLogAdminSerializer
-    permission_classes = [IsAuthenticated]
+    logs = vewTaskLogStaff.objects.filter(fk_userID=auth_user_id).order_by('-activity_timestamp')
+    table = TaskLogStaffTable(logs)
+    RequestConfig(request).configure(table)
 
-class vewTaskLogSupervisorViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = vewTaskLogSupervisor.objects.all()
-    serializer_class = vewTaskLogSupervisorSerializer
-    permission_classes = [IsAuthenticated]
+    return render(
+        request,
+        'dashboard_staff.html',
+        {
+            'form': form,
+            'table': table,
+            'user_key': (user_details.user_key if user_details else 'Staff'),
+        },
+    )
 
-class vewTaskLogStaffViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = vewTaskLogStaff.objects.all()
-    serializer_class = vewTaskLogStaffSerializer
-    permission_classes = [IsAuthenticated]
 
-class vewUserDetailsViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = vewUserDetails.objects.all()
-    serializer_class = vewUserDetailsSerializer
-    permission_classes = [IsAuthenticated]
-
-def timesheet_report(request):
-    return render(request, 'TimesheetApp/timesheet_report.html')
-
-class vewTimesheetViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = vewActivitiesTimesheetFullRange_GSheet.objects.all()
-    serializer_class = vewTimesheetSerializer
-    permission_classes = [IsAuthenticated]
-    
-    # Manual filtering instead of using django-filter
-    def get_queryset(self):
-        queryset = vewActivitiesTimesheetFullRange_GSheet.objects.all()
-        
-        # Get query parameters
-        employee_id = self.request.query_params.get('employee_id', None)
-        date_from = self.request.query_params.get('activity_date__gte', None)
-        date_to = self.request.query_params.get('activity_date__lte', None)
-        
-        # Apply filters if parameters exist
-        if employee_id:
-            queryset = queryset.filter(employee_id=employee_id)
-        if date_from:
-            queryset = queryset.filter(activity_date__gte=date_from)
-        if date_to:
-            queryset = queryset.filter(activity_date__lte=date_to)
-            
-        return queryset
-
-def get_transfer_views(request):
-    views = vewTransferViewToGoogleSheet.objects.all()
-    data = [{'view_name': v.view_name, 'google_sheets_id': v.google_sheets_id} for v in views]
-    return JsonResponse({'views': data})
-
-@csrf_exempt
-def export_to_gsheet(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        view_name = data.get('view_name')
-        google_sheets_id = data.get('google_sheets_id')
-
-        if not view_name or not google_sheets_id:
-            return JsonResponse({'error': 'Missing parameters'}, status=400)
-
-        # Step 1: Read data from the view
-        with connection.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM [{view_name}]")
-            columns = [col[0] for col in cursor.description]
-            rows = cursor.fetchall()
-
-        df = pd.DataFrame(rows, columns=columns)
-
-        # Step 2: Connect to Google Sheets
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-        creds = ServiceAccountCredentials.from_json_keyfile_name('path/to/your/creds.json', scope)
-        client = gspread.authorize(creds)
-
-        sheet = client.open_by_key(google_sheets_id)
-
-        try:
-            worksheet = sheet.worksheet(view_name)
-        except gspread.exceptions.WorksheetNotFound:
-            worksheet = sheet.add_worksheet(title=view_name, rows="100", cols="20")
-
-        worksheet.clear()
-        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
-
-        return JsonResponse({'status': 'success'})
-
+# --------------------------
+# Supervisor Dashboard (independent)
+# --------------------------
 @login_required
-def dashboard_admin(request):
-    auth_user = getattr(request, "auth_user", None)
+def dashboard_supervisor(request):
     role_key = get_role_key(request)
-    if not auth_user or role_key != "ADMIN":
+    if role_key != "SUPERVISOR":
         return redirect("timesheet:dashboard")
 
-    if request.method == "POST":
-        form = AdminTimesheetForm(request.POST)
-        if form.is_valid():
-            try:
-                # Convert selected user_key → fk_userID
-                selected_user_key = form.cleaned_data['user_key']
-                fk_user = tblAppUser.objects.filter(user_key=selected_user_key.user_key).first()
+    auth_user = getattr(request, "auth_user", None)
+    if not auth_user:
+        return HttpResponseForbidden("Unauthorized")
 
-                tblTaskLogAdmin.objects.create(
-                    fk_userID=fk_user,
+    auth_user_id = auth_user.fk_userID.id
+    user_details = vewUserDetails.objects.filter(id=auth_user_id).first()
+
+    if request.method == "POST":
+        form = TaskSelectionFormSupervisor(request.POST, user_id=auth_user_id)
+        # --- Fallback queryset to avoid empty dropdowns ---
+        if "task" in form.fields and not form.fields["task"].queryset.exists():
+            form.fields["task"].queryset = tblTask.objects.all().order_by("task")
+        # --------------------------------------------------
+        try:
+            if form.is_valid():
+                tblTaskLogSupervisor.objects.create(
+                    fk_userID=auth_user.fk_userID,
                     fk_taskID=form.cleaned_data["task"],
                     date=form.cleaned_data["date"],
                     time=form.cleaned_data["time"],
                     action_timestamp=timezone.now(),
                     work_activities=form.cleaned_data.get("work_activities", ""),
                     remarks=form.cleaned_data.get("remarks", ""),
-                    fk_operatorID=auth_user.fk_userID,
                 )
                 messages.success(request, "Entry saved.")
-                return redirect("timesheet:dashboard_admin")
-            except Exception as e:
-                messages.error(request, f"Could not save entry: {e}")
+                return redirect("timesheet:dashboard_supervisor")
+        except IntegrityError:
+            messages.error(
+                request,
+                "Duplicate entry: a record with the same task, date and time already exists."
+            )
+    else:
+        form = TaskSelectionFormSupervisor(user_id=auth_user_id)
+        # --- Fallback queryset to avoid empty dropdowns ---
+        if "task" in form.fields and not form.fields["task"].queryset.exists():
+            form.fields["task"].queryset = tblTask.objects.all().order_by("task")
+        # --------------------------------------------------
+
+    logs = vewTaskLogSupervisor.objects.filter(fk_userID=auth_user_id).order_by("-date")
+    table = TaskLogSupervisorTable(logs)
+    RequestConfig(request).configure(table)
+
+    return render(
+        request,
+        "dashboard_supervisor.html",
+        {
+            "form": form,
+            "table": table,
+            "user_key": (user_details.user_key if user_details else "Supervisor"),
+        },
+    )
+
+
+# --------------------------
+# Admin Dashboard (independent) – uses vewUserKey
+# --------------------------
+@login_required
+def dashboard_admin(request):
+    role_key = get_role_key(request)
+    if role_key != "ADMIN":
+        return redirect("timesheet:dashboard")
+
+    auth_user = getattr(request, "auth_user", None)
+    if not auth_user:
+        return HttpResponseForbidden("Unauthorized")
+
+    if request.method == "POST":
+        form = AdminTimesheetForm(request.POST)
+
+        # --- Fallback queryset: employee & task, so the selects are never empty ---
+        if "user_key" in form.fields and not form.fields["user_key"].queryset.exists():
+            form.fields["user_key"].queryset = vewUserKey.objects.all().order_by("user_key")
+        if "task" in form.fields and not form.fields["task"].queryset.exists():
+            form.fields["task"].queryset = tblTask.objects.all().order_by("task")
+        # -------------------------------------------------------------------------
+
+        try:
+            if form.is_valid():
+                selected_user_key = form.cleaned_data["user_key"]   # vewUserKey instance
+                target_user = tblAppUser.objects.filter(
+                    user_key=selected_user_key.user_key,
+                    is_active=True
+                ).first()
+
+                if not target_user:
+                    messages.error(request, "Selected employee is not active or not found.")
+                else:
+                    tblTaskLogAdmin.objects.create(
+                        fk_userID=target_user,
+                        fk_taskID=form.cleaned_data["task"],
+                        date=form.cleaned_data["date"],
+                        time=form.cleaned_data["time"],
+                        action_timestamp=timezone.now(),
+                        work_activities=form.cleaned_data.get("work_activities", ""),
+                        remarks=form.cleaned_data.get("remarks", ""),
+                        fk_operatorID=auth_user.fk_userID,
+                    )
+                    messages.success(request, "Entry saved.")
+                    return redirect("timesheet:dashboard_admin")
+        except IntegrityError:
+            messages.error(
+                request,
+                "Duplicate entry: a record with the same employee, task, date and time already exists."
+            )
+        except Exception as e:
+            messages.error(request, f"Could not save entry: {e}")
     else:
         form = AdminTimesheetForm()
+
+        # --- Fallback queryset: employee & task, so the selects are never empty ---
+        if "user_key" in form.fields and not form.fields["user_key"].queryset.exists():
+            form.fields["user_key"].queryset = vewUserKey.objects.all().order_by("user_key")
+        if "task" in form.fields and not form.fields["task"].queryset.exists():
+            form.fields["task"].queryset = tblTask.objects.all().order_by("task")
+        # -------------------------------------------------------------------------
 
     logs = vewTaskLogAdmin.objects.order_by("-action_timestamp")[:50]
     return render(request, "dashboard_admin.html", {"form": form, "logs": logs})
 
+
+# --------------------------
+# AJAX search for Select2
+# --------------------------
 @login_required
-# @require_roles("ADMIN", "SUPERADMIN")
-def admin_transfer_views(request):
-    auth_user = getattr(request, "auth_user", None)
+def task_search(request):
+    """
+        Select2 AJAX for tasks.
+        For STAFF, exclude the user's most recently selected task (by activity_timestamp).
+        For others, return all tasks.
+    """
+    q = (request.GET.get("q") or "").strip()
+
+    # Base queryset
+    qs = tblTask.objects.all()
+
+    # If staff, compute last selected task and exclude it
     role_key = get_role_key(request)
-    if not auth_user or role_key not in ("ADMIN", "SUPERADMIN"):
-        return redirect("timesheet:dashboard")
+    auth_user = getattr(request, 'auth_user', None)
 
-    views = vewTransferViewToGoogleSheet.objects.all().order_by("view_name")
-    return render(request, "admin_transfer_views.html", {"views": views})
+    if role_key == "STAFF" and auth_user:
+        last_log = (
+            tblTaskLogStaff.objects
+            .filter(fk_userID=auth_user.fk_userID)
+            .order_by('-activity_timestamp')
+            .select_related('fk_taskID')
+            .first()
+        )
+        if last_log and last_log.fk_taskID_id:
+            qs = qs.exclude(id=last_log.fk_taskID_id)
 
-@require_POST
+    if q:
+        qs = qs.filter(Q(task__icontains=q) | Q(task_key__icontains=q))
+
+    qs = qs.order_by("task")[:20]
+    return JsonResponse({
+        "results": [{"id": t.id, "text": f"{t.task} ({t.task_key})"} for t in qs]
+    })
+
+
 @login_required
-# @require_roles("ADMIN", "SUPERADMIN")
-def admin_export_view_to_gsheet(request):
-    """Thin wrapper to call your existing export_to_gsheet endpoint server-side."""
-    view_name = request.POST.get("view_name")
-    google_sheets_id = request.POST.get("google_sheets_id")
+def admin_userkey_search(request):
+    """
+    Select2 AJAX for Admin employee dropdown using vewUserKey.
+    Shows plain UserKey values.
+    Returns: {"results":[{"id":"<user_key>","text":"<user_key>"}, ...]}
+    """
+    q = (request.GET.get("q") or "").strip()
+    qs = vewUserKey.objects.all()
+    if q:
+        qs = qs.filter(user_key__icontains=q)
+
+    qs = qs.order_by("user_key")[:20]
+    return JsonResponse({
+        "results": [{"id": row.user_key, "text": row.user_key} for row in qs]
+    })
+
+
+# --------------------------
+# Misc
+# --------------------------
+@login_required
+def task_list(request):
+    user = getattr(request, "auth_user", None)
+    if not user:
+        return redirect("timesheet:welcome")
+    tasklogs = vewTaskLogStaff.objects.filter(fk_userID=user.fk_userID.id).order_by(
+        "-activity_timestamp"
+    )
+    return render(request, "task_list.html", {"tasklogs": tasklogs})
+
+
+@login_required
+def timesheet_report(request):
+    return render(request, "TimesheetApp/timesheet_report.html")
+
+
+@login_required
+def get_transfer_views(request):
+    views = vewTransferViewToGoogleSheet.objects.all()
+    data = [{"view_name": v.view_name, "google_sheets_id": v.google_sheets_id} for v in views]
+    return JsonResponse({"views": data})
+
+
+@login_required
+def export_to_gsheet(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid method"}, status=405)
+
+    data = json.loads(request.body or "{}")
+    view_name = data.get("view_name")
+    google_sheets_id = data.get("google_sheets_id")
     if not view_name or not google_sheets_id:
-        messages.error(request, "Missing parameters.")
-        return redirect("timesheet:admin_transfer_views")
+        return JsonResponse({"error": "Missing parameters"}, status=400)
 
-    # Reuse your existing export view logic by calling it directly,
-    # or re-implement a small safe call here without JSON.
-    from django.http import HttpRequest
-    import json as _json
-    req = HttpRequest()
-    req.method = "POST"
-    req._body = _json.dumps({"view_name": view_name, "google_sheets_id": google_sheets_id}).encode("utf-8")
-    resp = export_to_gsheet(req)  # your existing function
+    # Read SQL view rows
+    with connection.cursor() as cursor:
+        cursor.execute(f"SELECT * FROM [{view_name}]")
+        columns = [col[0] for col in cursor.description]
+        rows = cursor.fetchall()
+
+    df = pd.DataFrame(rows, columns=columns)
+
+    # Push to Google Sheets
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name("path/to/your/creds.json", scope)
+    client = gspread.authorize(creds)
+
+    sheet = client.open_by_key(google_sheets_id)
     try:
-        data = _json.loads(resp.content.decode("utf-8"))
-        if data.get("status") == "success":
-            messages.success(request, f"Exported '{view_name}' to Google Sheet.")
-        else:
-            messages.error(request, data.get("error") or "Export failed.")
-    except Exception:
-        messages.error(request, "Export failed.")
-    return redirect("timesheet:admin_transfer_views")
+        worksheet = sheet.worksheet(view_name)
+    except gspread.exceptions.WorksheetNotFound:
+        worksheet = sheet.add_worksheet(title=view_name, rows="100", cols="20")
 
+    worksheet.clear()
+    worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+    return JsonResponse({"status": "success"})

@@ -81,6 +81,7 @@
     <Folder Include="TimesheetApp\" />
     <Folder Include="TimesheetApp\migrations\" />
     <Folder Include="TimesheetApp\forms\" />
+    <Folder Include="TimesheetApp\templates\partials\" />
     <Folder Include="TimesheetApp\utils\" />
     <Folder Include="TimesheetApp\templates\" />
     <Folder Include="TimesheetApp\templates\registration\" />
@@ -123,6 +124,7 @@
     <Content Include="TimesheetApp\templates\dashboard_export.html" />
     <Content Include="TimesheetApp\templates\dashboard_staff.html" />
     <Content Include="TimesheetApp\templates\dashboard_supervisor.html" />
+    <Content Include="TimesheetApp\templates\partials\select2_init.html" />
     <Content Include="TimesheetApp\templates\registration\admin_transfer_views.html" />
     <Content Include="TimesheetApp\templates\staff_task_selection.html" />
     <Content Include="TimesheetApp\templates\task_list.html" />

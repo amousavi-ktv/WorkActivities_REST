@@ -1,42 +1,29 @@
 # TimesheetApp/Forms/forms_admin.py
 from django import forms
-from django.core.exceptions import ValidationError
 from TimesheetApp.models import tblAppUser, tblTask, vewUserKey
-from TimesheetApp.models import tblTaskLogAdmin, tblTask, vewUserKey
 
 class AdminTimesheetForm(forms.Form):
     user_key = forms.ModelChoiceField(
-        queryset=vewUserKey.objects.all().order_by('user_key'),
         label="Employee",
+        queryset=vewUserKey.objects.none(),           # AJAX: start empty
         required=True,
-        widget=forms.Select(attrs={"class": "form-select"})
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_user_key"})
     )
-    class Meta:
-            model = tblTaskLogAdmin
-            fields = ['user_key', 'task', 'date', 'time', 'work_activities', 'remarks']
-            widgets = {
-                'date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-                'time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
-                'work_activities': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-                'remarks': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-                'task': forms.Select(attrs={'class': 'form-select'}),
-            }
-
     task = forms.ModelChoiceField(
         label="Task",
-        queryset=tblTask.objects.all().order_by("task"),
+        queryset=tblTask.objects.none(),              # AJAX: start empty
         required=True,
-        widget=forms.Select(attrs={"class": "form-select"})
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_task"})
     )
     date = forms.DateField(
         label="Date",
         required=True,
-        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control", "id": "id_date"})
     )
     time = forms.TimeField(
         label="Time",
         required=True,
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"})
+        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control", "id": "id_time"})
     )
     work_activities = forms.CharField(
         label="Work activities",
@@ -49,12 +36,26 @@ class AdminTimesheetForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 2, "class": "form-control"})
     )
 
-    def clean_pid(self):
-        pid = self.cleaned_data["pid"].strip().upper()
-        if not tblAppUser.objects.filter(pid=pid, is_active=True).exists():
-            raise ValidationError("No active user found with this PID.")
-        return pid
+    def __init__(self, *args, **kwargs):
+        """
+        Keep dropdowns empty for Select2 AJAX. On POST, allow the chosen values to validate
+        by narrowing the queryset to the posted ids.
+        """
+        super().__init__(*args, **kwargs)
+
+        sel_user_key = self.data.get("user_key")
+        if sel_user_key:
+            self.fields["user_key"].queryset = vewUserKey.objects.filter(user_key=sel_user_key)
+        else:
+            self.fields["user_key"].queryset = vewUserKey.objects.none()
+
+        sel_task = self.data.get("task")
+        if sel_task:
+            self.fields["task"].queryset = tblTask.objects.filter(pk=sel_task)
+        else:
+            self.fields["task"].queryset = tblTask.objects.none()
 
     def get_user(self):
-        return tblAppUser.objects.get(pid=self.cleaned_data["pid"].strip().upper(), is_active=True)
-
+        """Map the chosen vewUserKey to the actual tblAppUser object."""
+        vk = self.cleaned_data["user_key"]  # instance of vewUserKey
+        return tblAppUser.objects.get(user_key=vk.user_key, is_active=True)
