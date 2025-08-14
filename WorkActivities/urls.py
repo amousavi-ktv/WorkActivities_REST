@@ -5,6 +5,7 @@ Definition of urls for WorkActivities/url.py.
 # WorkActivities/urls.py
 from django.contrib import admin
 from django.urls import path, include
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -17,4 +18,6 @@ urlpatterns = [
 
     # API v1 (your existing DRF routes)
     path("api/v1/", include("TimesheetApp.api_urls")),  # you can later add v2 side-by-side
+
+    path("login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
 ]

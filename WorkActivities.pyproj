@@ -63,6 +63,7 @@
     <Compile Include="TimesheetApp\utils\__init__.py" />
     <Compile Include="TimesheetApp\views.py" />
     <Compile Include="TimesheetApp\__init__.py" />
+    <Compile Include="WorkActivities\settings - Copy.py" />
     <Compile Include="WorkActivities\__init__.py" />
     <Compile Include="WorkActivities\settings.py" />
     <Compile Include="WorkActivities\urls.py" />
