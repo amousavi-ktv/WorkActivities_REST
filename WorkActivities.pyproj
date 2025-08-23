@@ -45,6 +45,8 @@
     <Compile Include="TimesheetApp\apps.py" />
     <Compile Include="TimesheetApp\backends.py" />
     <Compile Include="TimesheetApp\decorators.py" />
+    <Compile Include="TimesheetApp\forms\forms.py" />
+    <Compile Include="TimesheetApp\forms\forms_admin - Copy.py" />
     <Compile Include="TimesheetApp\forms\forms_admin.py" />
     <Compile Include="TimesheetApp\forms\forms_staff.py" />
     <Compile Include="TimesheetApp\forms\__init__.py" />
@@ -55,6 +57,7 @@
     <Compile Include="TimesheetApp\models.py" />
     <Compile Include="TimesheetApp\pipeline.py" />
     <Compile Include="TimesheetApp\serializers.py" />
+    <Compile Include="TimesheetApp\tables_admin.py" />
     <Compile Include="TimesheetApp\tables_staff.py" />
     <Compile Include="TimesheetApp\tables_supervisor.py" />
     <Compile Include="TimesheetApp\tests.py" />

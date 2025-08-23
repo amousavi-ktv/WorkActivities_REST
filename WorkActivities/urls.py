@@ -11,7 +11,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
     # App routes
-    path("", include("TimesheetApp.urls", namespace="timesheet")),  # <-- IMPORTANT
+    path("", include(("TimesheetApp.urls", "timesheet"), namespace="timesheet")),
 
     # Social auth
     path("auth/", include("social_django.urls", namespace="social")),

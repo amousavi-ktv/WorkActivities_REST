@@ -1,96 +1,28 @@
-{# templates/partials/select2_init.html #}
 <script>
-(function () {
-  try {
-    function ready(fn) {
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', fn);
-      } else {
-        fn();
-      }
-    }
-    function toNumber(val, dflt) {
-      var n = Number(val);
-      return isFinite(n) ? n : dflt;
-    }
-    function hasJQ() {
-      return !!(window.jQuery && jQuery.fn && jQuery.fn.select2);
-    }
-    function initOne(cfg) {
-      if (!cfg) return;
-      var elId = (cfg.id || '').trim();
-      if (!elId) return;
+    (function () {
+        // Feature: Disable submit until all required fields are valid + disable on submit
+        const form = document.querySelector('form');
+        if (!form) return;
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (!submitBtn) return;
 
-      var el = document.getElementById(elId);
-      if (!el) return;
+        function validateFormEnable() {
+            // Basic validity across required inputs
+            const allValid = Array.from(form.elements).every(el => {
+                if (el.type === 'hidden' || el.type === 'submit' || el.disabled) return true;
+                if (el.hasAttribute('required')) return el.value && el.checkValidity();
+                return true;
+            });
+            submitBtn.disabled = !allValid;
+        }
 
-      var placeholder = (cfg.placeholder || 'Select...');
-      var url = (cfg.url || '').trim();
-      if (!url) return;
+        form.addEventListener('input', validateFormEnable);
+        form.addEventListener('change', validateFormEnable);
+        validateFormEnable();
 
-      var minLen = toNumber(cfg.min_len, 0);
-
-      jQuery(el).select2({
-        width: '100%',
-        placeholder: placeholder,
-        allowClear: true,
-        ajax: {
-          url: url,
-          dataType: 'json',
-          delay: 150,
-          data: function (params) {
-            return { q: (params && params.term) ? params.term : '' };
-          },
-          processResults: function (data) {
-            return (data && Array.isArray(data.results)) ? data : { results: [] };
-          },
-          cache: true
-        },
-        minimumInputLength: minLen
-      });
-
-      var pre = el.getAttribute('data-initial-value');
-      if (pre != null && pre !== '') {
-        jQuery(el).val(pre).trigger('change');
-      }
-    }
-
-    ready(function () {
-      if (!hasJQ()) return;
-
-      // Backwards-compatible single-select API
-      var singleId = '{{ select_id|default:""|escapejs }}';
-      var singleUrl = '{{ search_url|default:""|escapejs }}';
-      var singlePlaceholder = '{{ placeholder|default:"Select..."|escapejs }}';
-      var singleMinLen = '{{ min_len|default:"0"|escapejs }}';
-
-      // New multi-select API (list of configs)
-      var multi = [
-        {% if selects %}
-          {% for cfg in selects %}
-            {
-              id: '{{ cfg.id|default:""|escapejs }}',
-              url: "{% if cfg.search_url %}{% url cfg.search_url %}{% else %}{{ cfg.url|default:''|escapejs }}{% endif %}",
-              placeholder: '{{ cfg.placeholder|default:"Select..."|escapejs }}',
-              min_len: '{{ cfg.min_len|default:"0"|escapejs }}'
-            }{% if not forloop.last %},{% endif %}
-          {% endfor %}
-        {% endif %}
-      ].filter(function (x) { return x && x.id; });
-
-      if (multi.length) {
-        for (var i = 0; i < multi.length; i++) initOne(multi[i]);
-      } else if (singleId && singleUrl) {
-        initOne({
-          id: singleId,
-          url: singleUrl,
-          placeholder: singlePlaceholder,
-          min_len: singleMinLen
+        form.addEventListener('submit', function (e) {
+            // Immediately disable to avoid double-submits; server will redirect or re-render
+            submitBtn.disabled = true;
         });
-      }
-    });
-  } catch (e) {
-    // swallow errors to avoid breaking the page
-  }
-})();
+    })();
 </script>

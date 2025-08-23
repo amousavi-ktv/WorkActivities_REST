@@ -1,29 +1,45 @@
 
+# TimesheetApp/serializers.py
 from rest_framework import serializers
-from .models import (
-    vewTaskLogAdmin, vewTaskLogSupervisor, vewTaskLogStaff, vewUserDetails, vewActivitiesTimesheetFullRange_GSheet
-)
-class vewTaskLogAdminSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = vewTaskLogAdmin
-        fields = '__all__'
+from datetime import datetime
+from .models import tblTaskLog, vewTaskLog
 
-class vewTaskLogSupervisorSerializer(serializers.ModelSerializer):
+class TaskLogWriteSerializer(serializers.ModelSerializer):
     class Meta:
-        model = vewTaskLogSupervisor
-        fields = '__all__'
+        model = tblTaskLog
+        fields = [
+            'id', 'fk_userID', 'fk_taskID',
+            'activity_date', 'activity_time',
+            'action_timestamp',
+            'work_activities', 'remarks',
+            'fk_operatorID',
+        ]
 
-class vewTaskLogStaffSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = vewTaskLogStaff
-        fields = '__all__'
+    def validate(self, attrs):
+        """
+        Rules:
+        - If action_timestamp is missing (STAFF path), set to now and derive activity_date/time if missing.
+        - If action_timestamp is provided but activity_date/time missing, derive from action_timestamp.
+        - If fk_operatorID missing, default to fk_userID (actor == subject).
+        """
+        at = attrs.get('action_timestamp')
+        if not at:
+            now = datetime.now()
+            attrs['action_timestamp'] = now
+            attrs.setdefault('activity_date', now.date())
+            attrs.setdefault('activity_time', now.time().replace(microsecond=0))
+        else:
+            # normalise and derive date/time if not given
+            attrs.setdefault('activity_date', at.date())
+            attrs.setdefault('activity_time', at.time().replace(microsecond=0))
 
-class vewUserDetailsSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = vewUserDetails
-        fields = '__all__'
+        if not attrs.get('fk_operatorID'):
+            attrs['fk_operatorID'] = attrs['fk_userID']
 
-class vewTimesheetSerializer(serializers.ModelSerializer):
+        return attrs
+
+
+class TaskLogReadSerializer(serializers.ModelSerializer):
     class Meta:
-        model = vewActivitiesTimesheetFullRange_GSheet
+        model = vewTaskLog
         fields = '__all__'

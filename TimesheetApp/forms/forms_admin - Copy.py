@@ -1,42 +1,39 @@
 # TimesheetApp/Forms/forms_admin.py
 from django import forms
 from TimesheetApp.models import tblAppUser, tblTask, vewUserKey
-from django import forms
-from TimesheetApp.models import tblTask, vewUserKey
 
 class AdminTimesheetForm(forms.Form):
     user_key = forms.ModelChoiceField(
-        queryset=vewUserKey.objects.all().order_by("user_key"),
-        required=True,
         label="Employee",
-        empty_label="Select user...",
-        widget=forms.Select(attrs={"class": "form-select"})  # renders <select id="id_user_key">
+        queryset=vewUserKey.objects.none(),           # AJAX: start empty
+        required=True,
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_user_key"})
     )
     task = forms.ModelChoiceField(
-        queryset=tblTask.objects.all().order_by("task"),
-        required=True,
         label="Task",
-        widget=forms.Select(attrs={"class": "form-select"})  # <select id="id_task">
+        queryset=tblTask.objects.none(),              # AJAX: start empty
+        required=True,
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_task"})
     )
     date = forms.DateField(
-        required=True,
         label="Date",
-        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
+        required=True,
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control", "id": "id_date"})
     )
     time = forms.TimeField(
-        required=True,
         label="Time",
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"})
+        required=True,
+        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control", "id": "id_time"})
     )
     work_activities = forms.CharField(
+        label="Work activities",
         required=False,
-        label="Work Activities",
-        widget=forms.TextInput(attrs={"class": "form-control"})
+        widget=forms.Textarea(attrs={"rows": 2, "class": "form-control"})
     )
     remarks = forms.CharField(
-        required=False,
         label="Remarks",
-        widget=forms.TextInput(attrs={"class": "form-control"})
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2, "class": "form-control"})
     )
 
     def __init__(self, *args, **kwargs):
